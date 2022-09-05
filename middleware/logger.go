@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"strings"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -13,10 +16,10 @@ func JSONLogMiddleware() gin.HandlerFunc {
 
 		entry := log.WithFields(log.Fields{
 			"client_ip":  GetClientIP(c),
-			"duration": duration,
-			"method": c.Request.Method,
-			"path":   c.Request.RequestURI,
-			"status": c.Writer.Status(),
+			"duration":   duration,
+			"method":     c.Request.Method,
+			"path":       c.Request.RequestURI,
+			"status":     c.Writer.Status(),
 			"referrer":   c.Request.Referer(),
 			"request_id": c.Writer.Header().Get("Request-Id"),
 		})
