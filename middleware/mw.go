@@ -8,15 +8,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func JSONLogMiddleware() gin.HandlerFunc {
+func init() {
+	// log.SetFormatter(&log.JSONFormatter{})
+	// log.SetOutput(os.Stdout)
+	log.SetLevel(log.InfoLevel)
+}
+
+func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		c.Next()
-		duration := GetDurationInMillseconds(start)
+		stop := time.Since(start)
 
 		entry := log.WithFields(log.Fields{
 			"client_ip":  GetClientIP(c),
-			"duration":   duration,
+			"duration":   float64(stop.Nanoseconds()) / 1000000.0, // in ms
 			"method":     c.Request.Method,
 			"path":       c.Request.RequestURI,
 			"status":     c.Writer.Status(),
@@ -30,14 +36,6 @@ func JSONLogMiddleware() gin.HandlerFunc {
 			entry.Info("")
 		}
 	}
-}
-
-func GetDurationInMillseconds(start time.Time) float64 {
-	end := time.Now()
-	duration := end.Sub(start)
-	milliseconds := float64(duration) / float64(time.Millisecond)
-	rounded := float64(int(milliseconds*100+.5)) / 100
-	return rounded
 }
 
 func GetClientIP(c *gin.Context) string {
