@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -9,8 +10,8 @@ import (
 )
 
 func init() {
-	// log.SetFormatter(&log.JSONFormatter{})
-	// log.SetOutput(os.Stdout)
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 }
 
@@ -21,8 +22,8 @@ func Logger() gin.HandlerFunc {
 		stop := time.Since(start)
 
 		entry := log.WithFields(log.Fields{
-			"client_ip":  GetClientIP(c),
-			"duration":   float64(stop.Nanoseconds()) / 1000000.0, // in ms
+			"ip":         GetClientIP(c),
+			"latency":    float64(stop.Nanoseconds()) / 1000000.0, // in ms
 			"method":     c.Request.Method,
 			"path":       c.Request.RequestURI,
 			"status":     c.Writer.Status(),
