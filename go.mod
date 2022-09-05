@@ -1,4 +1,4 @@
-module github/city-mall/go-utils
+module github.com/city-mall/go-utils
 
 go 1.17
 
