@@ -8,13 +8,13 @@ This repo includes utility packages for golang
 
 **Middleware:** Logger
 
-**Kafka:** Sarama(Producer,Consumer)
+**Kafka:** Confluent, Sarama, Segmentio(Producer,Consumer)
 
 
 
 ## Usage/Examples
 
-**Kafka - Sarama Consumer:**
+**Kafka - Consumer:**
 
 ```golang
 import "github.com/city-mall/go-utils/kafka/sarama/consumer"
@@ -56,6 +56,35 @@ func consumeMsg(msg *sarama.ConsumerMessage) {
   // Operations for processing messages
 	fmt.Println("Topic: ", msg.Topic)
 	fmt.Println("Value: ", string(msg.Value))
+}
+```
+
+**Kafka - Producer:**
+
+```golang
+import "github.com/city-mall/go-utils/kafka/sarama/async"
+
+func main() {
+    // Create config
+    config := async.ProducerConfig{
+        AppEnv:       "development",
+        ReadTimeout:  time.Second * 10,
+        WriteTimeout: time.Second * 10,
+        ClientID:     "client-id",
+        Brokers:      "localhost:9092",
+    }
+
+    // Inititalize Kafka producer
+    async.KafkaProducer(config)
+    
+    // Send string to kafka
+    async.PushStringMessage("Hey there!", "applink-events")
+    
+    // Send JSON(Byte[]) to kafka
+    async.PushJSONMessage([]byte(`{"num":6.13,"strs":["a","b"]}`), "applink-events")
+
+    // Close Producer
+    async.CloseProducer()
 }
 ```
 
