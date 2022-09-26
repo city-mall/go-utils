@@ -85,3 +85,7 @@ func GetDb() (*mongo.Client, error) {
 	}
 	return dbInstance.db, nil
 }
+
+func Close() {
+	dbInstance.db.Disconnect(context.TODO())
+}

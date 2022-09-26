@@ -42,3 +42,7 @@ func GetDb() (*pgxpool.Pool, error) {
 	}
 	return dbInstance.db, nil
 }
+
+func Close() {
+	dbInstance.db.Close()
+}
