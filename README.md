@@ -91,6 +91,8 @@ func main() {
 
 **DB:**
 
+**Note: MongoDB connection requires pem file to be saved in root folder './' with name 'rds-combined-ca-bundle.pem'
+
 ```golang
 import "github.com/city-mall/go-utils/db/postgres"
 
