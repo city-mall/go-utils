@@ -10,6 +10,7 @@ This repo includes utility packages for golang
 
 **Kafka:** Confluent, Sarama, Segmentio(Producer,Consumer)
 
+**DB:** Postgres, MongoDB
 
 
 ## Usage/Examples
@@ -88,3 +89,32 @@ func main() {
 }
 ```
 
+**DB:**
+
+**Note: MongoDB connection requires pem file to be saved in root folder './' with name 'rds-combined-ca-bundle.pem'
+
+```golang
+import "github.com/city-mall/go-utils/db/postgres"
+
+func main() {
+        // Create config
+	config := postgres.Client{
+		GO_ENV: "development",
+		DB_URL: "postgres://cm:cm@localhost:5432/cmdb",
+	}
+	
+	// Connect to Postgres
+	postgres.Connect(config)
+	
+	// Fetch instance
+	db, err := postgres.GetDb()
+
+	// Check for Error
+	if err != nil {
+	   log.Fatal(err)
+	}
+	
+	// Close DB Connection
+	postgres.Close()
+}
+```
