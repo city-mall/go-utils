@@ -32,7 +32,7 @@ func KafkaProducer(config ProducerConfig) {
 	appEnv := config.AppEnv
 	if appEnv != "development" {
 		kafkaConfig.SetKey("sasl.mechanisms", config.SASLMechanism)
-		kafkaConfig.SetKey("security.protocol", "sasl_ssl")
+		kafkaConfig.SetKey("security.protocol", "SASL_SSL")
 		kafkaConfig.SetKey("sasl.username", config.SASLUser)
 		kafkaConfig.SetKey("sasl.password", config.SASLPassword)
 	}
