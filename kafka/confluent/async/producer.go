@@ -56,7 +56,7 @@ func PushJSONMessage(m []byte, topic string) {
 	}
 	e := asyncProducer.Produce(msg, nil)
 	if e != nil {
-		zerolog.Fatal().Msgf(err.Error())
+		zerolog.Fatal().Msgf(e.Error())
 	}
 }
 
@@ -71,7 +71,7 @@ func PushStringMessage(m string, topic string) {
 	}
 	e := asyncProducer.Produce(msg, nil)
 	if e != nil {
-		zerolog.Fatal().Msgf(err.Error())
+		zerolog.Fatal().Msgf(e.Error())
 	}
 }
 
