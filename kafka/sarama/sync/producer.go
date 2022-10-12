@@ -44,7 +44,7 @@ func KafkaProducer(config KafkaConfig) {
 
 	syncProducer, err = sarama.NewSyncProducer(strings.Split(config.Brokers, ","), kafkaConfig)
 	if err != nil {
-		zerolog.Fatal().Msgf(err.Error())
+		zerolog.Error().Msgf(err.Error())
 	} else {
 		zerolog.Info().Msgf("Kafka connected")
 		initialized = true

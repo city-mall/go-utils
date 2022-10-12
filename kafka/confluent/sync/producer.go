@@ -38,7 +38,7 @@ func KafkaProducer(config ProducerConfig) {
 	}
 	syncProducer, err = kafka.NewProducer(kafkaConfig)
 	if err != nil {
-		zerolog.Fatal().Msgf(err.Error())
+		zerolog.Error().Msgf(err.Error())
 	} else {
 		initialized = true
 		zerolog.Info().Msgf("Kafka connected")
@@ -61,7 +61,7 @@ func PushJSONMessage(m []byte, topic string) {
 	ack := e.(*kafka.Message)
 
 	if ack.TopicPartition.Error != nil {
-		zerolog.Fatal().Msgf(err.Error())
+		zerolog.Error().Msgf(err.Error())
 	}
 }
 
@@ -81,7 +81,7 @@ func PushStringMessage(m string, topic string) {
 	ack := e.(*kafka.Message)
 
 	if ack.TopicPartition.Error != nil {
-		zerolog.Fatal().Msgf(err.Error())
+		zerolog.Error().Msgf(err.Error())
 	}
 }
 
