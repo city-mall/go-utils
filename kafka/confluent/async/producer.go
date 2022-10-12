@@ -107,7 +107,7 @@ func CreateTopic(topics []string, env string, name string) error {
 		a.Close()
 		return err
 	} else {
-		zerolog.Error().Msgf("Producer not found")
+		zerolog.Error().Msgf("Producer %v not found", name)
 		return nil
 	}
 }
@@ -115,7 +115,7 @@ func CreateTopic(topics []string, env string, name string) error {
 func PushJSONMessage(m []byte, topic string, name string) {
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
-			zerolog.Error().Msgf("Kafka not initialized")
+			zerolog.Error().Msgf("Kafka %v not initialized", name)
 			return
 		}
 		msg := &kafka.Message{
@@ -127,14 +127,14 @@ func PushJSONMessage(m []byte, topic string, name string) {
 			zerolog.Error().Msgf(e.Error())
 		}
 	} else {
-		zerolog.Error().Msgf("Producer not found")
+		zerolog.Error().Msgf("Producer %v not found", name)
 	}
 }
 
 func PushStringMessage(m string, topic string, name string) {
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
-			zerolog.Error().Msgf("Kafka not initialized")
+			zerolog.Error().Msgf("Kafka %v not initialized", name)
 			return
 		}
 		msg := &kafka.Message{
@@ -145,16 +145,20 @@ func PushStringMessage(m string, topic string, name string) {
 		if e != nil {
 			zerolog.Error().Msgf(e.Error())
 		}
+	} else {
+		zerolog.Error().Msgf("Producer %v not found", name)
 	}
 }
 
 func CloseProducer(name string) {
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
-			zerolog.Error().Msgf("Kafka not initialized")
+			zerolog.Error().Msgf("Kafka %v not initialized", name)
 			return
 		}
 		zerolog.Info().Msgf("Closing %v", name)
 		producer.asyncProducer.Close()
+	} else {
+		zerolog.Error().Msgf("Producer %v not found", name)
 	}
 }
