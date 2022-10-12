@@ -51,7 +51,7 @@ func KafkaConsumer(config ConsumerConfig) {
 
 	consumer, err = consumergroup.JoinConsumerGroup(config.ConsumerGroup, config.Topic, config.ZooConnection, kafkaConfig)
 	if err != nil {
-		zerolog.Fatal().Msgf(err.Error())
+		zerolog.Error().Msgf(err.Error())
 	}
 	initialized = true
 	zerolog.Info().Msgf("Consumer connected")

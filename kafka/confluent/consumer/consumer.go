@@ -46,7 +46,7 @@ func KafkaConsumer(config ConsumerConfig) {
 
 	err = consumer.SubscribeTopics(*&config.Topic, nil)
 	if err != nil {
-		zerolog.Fatal().Msgf(err.Error())
+		zerolog.Error().Msgf(err.Error())
 	}
 
 	initialized = true
