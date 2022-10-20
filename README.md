@@ -119,3 +119,34 @@ func main() {
 	postgres.Close()
 }
 ```
+
+**Redis:**
+
+**Note: Visit https://redis.uptrace.dev/guide/go-redis.html#executing-commands for redis commands
+
+```golang
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/city-mall/go-utils/redis"
+)
+
+func main() {
+	fmt.Println("Welcome to Go-Utils")
+	config := redis.RedisConfig{
+		Name: "cm-live",
+		Host: "redis://localhost",
+		Port: 6379,
+	}
+	redis.Connect(config)
+	rdb, e := redis.GetRedis("cm-live")
+	if e != nil {
+		log.Fatal(e)
+	}
+	rdb.Set(context.Background(), "deep", "Hola", 0)
+	get := rdb.Get(context.Background(), "deep")
+	fmt.Printf(get.Val())
+}
+```
