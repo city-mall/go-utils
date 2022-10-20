@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"sync"
 
 	zeroLog "github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -23,40 +24,43 @@ type Client struct {
 
 var (
 	dbInstance Client
+	dbConn     sync.Once
 )
 
 func Connect(config Client) {
-	if dbInstance.isLoaded {
-		return
-	}
-	var (
-		client *mongo.Client
-		err    error
-	)
-	if config.GO_ENV == "production" {
-		caFile := "rds-combined-ca-bundle.pem"
-		tlsConfig, err := getCustomTLSConfig(caFile)
-		if err != nil {
-			zeroLog.Panic().Err(err).Msg(err.Error())
+	dbConn.Do(func() {
+		if dbInstance.isLoaded {
+			return
 		}
-		client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(config.DB_URL).SetTLSConfig(tlsConfig))
-	} else {
-		client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(config.DB_URL))
-	}
+		var (
+			client *mongo.Client
+			err    error
+		)
+		if config.GO_ENV == "production" {
+			caFile := "rds-combined-ca-bundle.pem"
+			tlsConfig, err := getCustomTLSConfig(caFile)
+			if err != nil {
+				zeroLog.Panic().Err(err).Msg(err.Error())
+			}
+			client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(config.DB_URL).SetTLSConfig(tlsConfig))
+		} else {
+			client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(config.DB_URL))
+		}
 
-	if err != nil {
-		log.Fatal(err)
-	}
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	err = client.Ping(context.TODO(), readpref.Primary())
-	if err != nil {
-		log.Fatal(err)
-	}
+		err = client.Ping(context.TODO(), readpref.Primary())
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	dbInstance.db = client
-	dbInstance.isLoaded = true
+		dbInstance.db = client
+		dbInstance.isLoaded = true
 
-	zeroLog.Info().Msgf("MongoDB Connection Established")
+		zeroLog.Info().Msgf("MongoDB Connection Established")
+	})
 }
 
 func getCustomTLSConfig(caFile string) (*tls.Config, error) {
