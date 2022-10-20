@@ -73,19 +73,20 @@ func main() {
         WriteTimeout: time.Second * 10,
         ClientID:     "client-id",
         Brokers:      "localhost:9092",
+	Name:         "cm-live"
     }
 
     // Inititalize Kafka producer
     async.KafkaProducer(config)
     
     // Send string to kafka
-    async.PushStringMessage("Hey there!", "applink-events")
+    async.PushStringMessage("Hey there!", "applink-events", "cm-live")
     
     // Send JSON(Byte[]) to kafka
-    async.PushJSONMessage([]byte(`{"num":6.13,"strs":["a","b"]}`), "applink-events")
+    async.PushJSONMessage([]byte(`{"num":6.13,"strs":["a","b"]}`), "applink-events", "cm-live")
 
     // Close Producer
-    async.CloseProducer()
+    async.CloseProducer("cm-live")
 }
 ```
 
