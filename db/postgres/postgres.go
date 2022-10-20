@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	zeroLog "github.com/rs/zerolog/log"
@@ -20,18 +21,21 @@ type Client struct {
 
 var (
 	dbInstance Client
+	dbConn     sync.Once
 )
 
 func Connect(config Client) {
-	db, err := pgxpool.Connect(context.Background(), config.DB_URL)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		log.Fatal(err)
-	}
+	dbConn.Do(func() {
+		db, err := pgxpool.Connect(context.Background(), config.DB_URL)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+			log.Fatal(err)
+		}
 
-	zeroLog.Info().Msgf("DB Successfully Connected")
-	dbInstance.db = db
-	dbInstance.isLoaded = true
+		zeroLog.Info().Msgf("DB Successfully Connected")
+		dbInstance.db = db
+		dbInstance.isLoaded = true
+	})
 }
 
 func GetDb() (*pgxpool.Pool, error) {
