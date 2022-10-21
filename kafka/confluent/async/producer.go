@@ -17,14 +17,15 @@ type producer struct {
 var producers = make(map[string]*producer)
 
 type ProducerConfig struct {
-	AppEnv          string
-	ProducerTimeout time.Duration
-	ClientID        string
-	SASLMechanism   string
-	SASLUser        string
-	SASLPassword    string
-	Brokers         string
-	Name            string
+	AppEnv                             string
+	ProducerTimeout                    time.Duration
+	ClientID                           string
+	SASLMechanism                      string
+	SASLUser                           string
+	SASLPassword                       string
+	Brokers                            string
+	EnableSslCertificationVerification bool
+	Name                               string
 }
 
 func KafkaProducer(config ProducerConfig) {
@@ -39,6 +40,7 @@ func KafkaProducer(config ProducerConfig) {
 		kafkaConfig.SetKey("security.protocol", "SASL_SSL")
 		kafkaConfig.SetKey("sasl.username", config.SASLUser)
 		kafkaConfig.SetKey("sasl.password", config.SASLPassword)
+		kafkaConfig.SetKey("enable.ssl.certificate.verification", config.EnableSslCertificationVerification)
 	}
 	producers[config.Name] = &producer{
 		asyncProducer: nil,
