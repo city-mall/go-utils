@@ -68,12 +68,13 @@ import "github.com/city-mall/go-utils/kafka/sarama/async"
 func main() {
     // Create config
     config := async.ProducerConfig{
-        AppEnv:       "development",
-        ReadTimeout:  time.Second * 10,
-        WriteTimeout: time.Second * 10,
-        ClientID:     "client-id",
-        Brokers:      "localhost:9092",
-	Name:         "cm-live"
+        AppEnv:        "development",
+        ReadTimeout:   time.Second * 10,
+        WriteTimeout:  time.Second * 10,
+        ClientID:      "client-id",
+	ProducerGroup: "group-id",
+        Brokers:       "localhost:9092",
+	Name:          "cm-live"
     }
 
     // Inititalize Kafka producer
