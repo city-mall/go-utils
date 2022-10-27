@@ -20,6 +20,7 @@ type ProducerConfig struct {
 	AppEnv                             string
 	ProducerTimeout                    time.Duration
 	ClientID                           string
+	ProducerGroup                      string
 	SASLMechanism                      string
 	SASLUser                           string
 	SASLPassword                       string
@@ -31,6 +32,7 @@ type ProducerConfig struct {
 func KafkaProducer(config ProducerConfig) {
 	kafkaConfig := &kafka.ConfigMap{
 		"client.id":         config.ClientID,
+		"group.id":          config.ProducerGroup,
 		"bootstrap.servers": config.Brokers,
 		"socket.timeout.ms": config.ProducerTimeout,
 	}
