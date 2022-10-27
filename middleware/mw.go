@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -18,8 +21,20 @@ func init() {
 func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
+		body, err := ioutil.ReadAll(c.Request.Body)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
 		c.Next()
+
 		stop := time.Since(start)
+
+		var data map[string]interface{}
+		err = json.Unmarshal(body, &data)
 
 		entry := log.WithFields(log.Fields{
 			"ip":         GetClientIP(c),
@@ -29,6 +44,7 @@ func Logger() gin.HandlerFunc {
 			"status":     c.Writer.Status(),
 			"referrer":   c.Request.Referer(),
 			"request_id": c.Writer.Header().Get("Request-Id"),
+			"body":       data,
 		})
 
 		if c.Writer.Status() >= 500 {
