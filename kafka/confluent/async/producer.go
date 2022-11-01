@@ -170,10 +170,10 @@ func CloseProducer(name string, wg *sync.WaitGroup) {
 		producer.asyncProducer.Flush(producer.config.BatchTimeout)
 		zerolog.Info().Msgf("Closing %v", name)
 		producer.asyncProducer.Close()
-		if wg != nil {
-			wg.Done()
-		}
 	} else {
 		zerolog.Error().Msgf("Producer %v not found", name)
+	}
+	if wg != nil {
+		wg.Done()
 	}
 }
