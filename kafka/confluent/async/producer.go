@@ -2,6 +2,7 @@ package async
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	zerolog "github.com/rs/zerolog/log"
@@ -10,6 +11,7 @@ import (
 
 type producer struct {
 	asyncProducer *kafka.Producer
+	config        ProducerConfig
 	initialized   bool
 	err           error
 }
@@ -27,14 +29,18 @@ type ProducerConfig struct {
 	Brokers                            string
 	EnableSslCertificationVerification bool
 	Name                               string
+	Batch                              int
+	BatchTimeout                       int
 }
 
 func KafkaProducer(config ProducerConfig) {
 	kafkaConfig := &kafka.ConfigMap{
-		"client.id":         config.ClientID,
-		"group.id":          config.ProducerGroup,
-		"bootstrap.servers": config.Brokers,
-		"socket.timeout.ms": config.ProducerTimeout,
+		"client.id":          config.ClientID,
+		"group.id":           config.ProducerGroup,
+		"bootstrap.servers":  config.Brokers,
+		"socket.timeout.ms":  config.ProducerTimeout,
+		"batch.num.messages": config.Batch,
+		"linger.ms":          config.BatchTimeout,
 	}
 	appEnv := config.AppEnv
 	if appEnv != "development" {
@@ -48,6 +54,7 @@ func KafkaProducer(config ProducerConfig) {
 		asyncProducer: nil,
 		initialized:   false,
 		err:           nil,
+		config:        config,
 	}
 	producers[config.Name].asyncProducer, producers[config.Name].err = kafka.NewProducer(kafkaConfig)
 	if producers[config.Name].err != nil {
@@ -154,15 +161,19 @@ func PushStringMessage(m string, topic string, name string) {
 	}
 }
 
-func CloseProducer(name string) {
+func CloseProducer(name string, wg *sync.WaitGroup) {
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
 			zerolog.Error().Msgf("Kafka %v not initialized", name)
 			return
 		}
+		producer.asyncProducer.Flush(producer.config.BatchTimeout)
 		zerolog.Info().Msgf("Closing %v", name)
 		producer.asyncProducer.Close()
 	} else {
 		zerolog.Error().Msgf("Producer %v not found", name)
+	}
+	if wg != nil {
+		wg.Done()
 	}
 }
