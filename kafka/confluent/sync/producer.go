@@ -1,4 +1,4 @@
-package async
+package sync
 
 import (
 	"context"
@@ -36,6 +36,7 @@ func KafkaProducer(config ProducerConfig) {
 		kafkaConfig.SetKey("security.protocol", "sasl_ssl")
 		kafkaConfig.SetKey("sasl.username", config.SASLUser)
 		kafkaConfig.SetKey("sasl.password", config.SASLPassword)
+
 	}
 	syncProducer, err = kafka.NewProducer(kafkaConfig)
 	if err != nil {

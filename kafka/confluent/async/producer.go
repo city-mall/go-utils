@@ -2,12 +2,45 @@ package async
 
 import (
 	"context"
-	"sync"
+	"errors"
+	"fmt"
 	"time"
 
 	zerolog "github.com/rs/zerolog/log"
 	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
+
+/*
+We will use ProduceChannel() for producing asynchronously and will get delivery report in separate go-routine by kafka.Event() channel
+
+socket.timeout.ms => is a configuration property in the Kafka producer that controls the amount of time the producer will wait for a
+                     response from the server before timing out.The default value for socket.timeout.ms is 30 seconds.
+
+batch.size+>  is a configuration property in the Kafka producer that controls the maximum size of a batch of messages that
+                   are sent to the server in a single request.
+
+ BatchNumMessages => batch.num.messages is a configuration property in the Kafka producer that controls the maximum number of messages
+                     that are included in a single batch.
+
+ LingerMs => linger.ms is a configuration property in the Kafka producer that controls the amount of time the producer will wait before
+                 sending a batch of messages to the server.
+
+*/
+
+type ProducerConfig struct {
+	AppEnv                             string
+	Name                               string
+	Brokers                            string
+	ClientID                           string
+	SASLMechanism                      string
+	SASLUser                           string
+	SASLPassword                       string
+	EnableSslCertificationVerification bool
+	SocketTimeOut                      time.Duration
+	BatchNumMessages                   int
+	BatchSize                          int
+	LingerMs                           int
+}
 
 type producer struct {
 	asyncProducer *kafka.Producer
@@ -18,29 +51,21 @@ type producer struct {
 
 var producers = make(map[string]*producer)
 
-type ProducerConfig struct {
-	AppEnv                             string
-	ProducerTimeout                    time.Duration
-	ClientID                           string
-	ProducerGroup                      string
-	SASLMechanism                      string
-	SASLUser                           string
-	SASLPassword                       string
-	Brokers                            string
-	EnableSslCertificationVerification bool
-	Name                               string
-	Batch                              int
-	BatchTimeout                       int
-}
+func KafkaProducer(config ProducerConfig) error {
+	if config.SocketTimeOut < 10 {
+		config.SocketTimeOut = 300000
+	}
+	if config.BatchSize < 1 {
+		config.BatchSize = 16384
+	}
 
-func KafkaProducer(config ProducerConfig) {
 	kafkaConfig := &kafka.ConfigMap{
 		"client.id":          config.ClientID,
-		"group.id":           config.ProducerGroup,
 		"bootstrap.servers":  config.Brokers,
-		"socket.timeout.ms":  config.ProducerTimeout,
-		"batch.num.messages": config.Batch,
-		"linger.ms":          config.BatchTimeout,
+		"socket.timeout.ms":  config.SocketTimeOut,
+		"batch.num.messages": config.BatchNumMessages,
+		"batch.size":         config.BatchSize,
+		"linger.ms":          config.LingerMs,
 	}
 	appEnv := config.AppEnv
 	if appEnv != "development" {
@@ -59,9 +84,12 @@ func KafkaProducer(config ProducerConfig) {
 	producers[config.Name].asyncProducer, producers[config.Name].err = kafka.NewProducer(kafkaConfig)
 	if producers[config.Name].err != nil {
 		zerolog.Error().Msgf(producers[config.Name].err.Error())
+		return producers[config.Name].err
 	} else {
 		producers[config.Name].initialized = true
 		zerolog.Info().Msgf("Kafka connected %v", config.Name)
+		go deliveryTestHandler(producers[config.Name].asyncProducer.Events())
+		return nil
 	}
 }
 
@@ -133,13 +161,11 @@ func PushJSONMessage(m []byte, topic string, name string) {
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          m,
 		}
-		e := producer.asyncProducer.Produce(msg, nil)
-		if e != nil {
-			zerolog.Error().Msgf(e.Error())
-		}
+		producer.asyncProducer.ProduceChannel() <- msg
 	} else {
 		zerolog.Error().Msgf("Producer %v not found", name)
 	}
+
 }
 
 func PushStringMessage(m string, topic string, name string) {
@@ -152,28 +178,53 @@ func PushStringMessage(m string, topic string, name string) {
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          []byte(m),
 		}
-		e := producer.asyncProducer.Produce(msg, nil)
-		if e != nil {
-			zerolog.Error().Msgf(e.Error())
-		}
+		producer.asyncProducer.ProduceChannel() <- msg
 	} else {
 		zerolog.Error().Msgf("Producer %v not found", name)
 	}
 }
 
-func CloseProducer(name string, wg *sync.WaitGroup) {
+func CloseProducer(name string) {
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
 			zerolog.Error().Msgf("Kafka %v not initialized", name)
 			return
 		}
-		producer.asyncProducer.Flush(producer.config.BatchTimeout)
+		FlushProducerChannel(name)
 		zerolog.Info().Msgf("Closing %v", name)
 		producer.asyncProducer.Close()
 	} else {
 		zerolog.Error().Msgf("Producer %v not found", name)
 	}
-	if wg != nil {
-		wg.Done()
+}
+
+func FlushProducerChannel(name string) error {
+	if producer, found := producers[name]; found {
+		if !producer.initialized {
+			err := errors.New(fmt.Sprintf("Kafka %v not initialized", name))
+			zerolog.Error().Msgf(err.Error())
+			return err
+		}
+		count := producer.asyncProducer.Flush(3000)
+		zerolog.Info().Msgf("Unflushed Messages %v", count)
+		return nil
+	} else {
+		err := errors.New(fmt.Sprintf("Producer %v not found", name))
+		zerolog.Error().Msgf(err.Error())
+		return err
+	}
+}
+
+func deliveryTestHandler(deliveryChan chan kafka.Event) {
+	for ev := range deliveryChan {
+		m, ok := ev.(*kafka.Message)
+		if !ok {
+			continue
+		}
+		if m.TopicPartition.Error != nil {
+			zerolog.Debug().Msgf("Message delivery tp %v error: %v value %v", m.TopicPartition, m.TopicPartition.Error, m.Value)
+		} else {
+			zerolog.Debug().Msgf("Message sent success %v", m.Value)
+		}
 	}
 }
