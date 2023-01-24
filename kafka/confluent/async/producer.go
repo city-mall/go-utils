@@ -11,10 +11,8 @@ import (
 )
 
 /*
-We will use ProduceChannel() for producing asynchronously and will get delivery report in separate go-routine by kafka.Event() channel
 
-socket.timeout.ms => is a configuration property in the Kafka producer that controls the amount of time the producer will wait for a
-                     response from the server before timing out.The default value for socket.timeout.ms is 30 seconds.
+----------------------------Batching controlled/enabled by these three parameters -------------------------------------
 
 batch.size+>  is a configuration property in the Kafka producer that controls the maximum size of a batch of messages that
                    are sent to the server in a single request.
@@ -24,6 +22,13 @@ batch.size+>  is a configuration property in the Kafka producer that controls th
 
  LingerMs => linger.ms is a configuration property in the Kafka producer that controls the amount of time the producer will wait before
                  sending a batch of messages to the server.
+           ---------------------------------------------------------------------------------------------------------
+
+We will use ProduceChannel() for producing asynchronously and will get delivery report in separate go-routine by kafka.Event() channel
+
+socket.timeout.ms => is a configuration property in the Kafka producer that controls the amount of time the producer will wait for a
+                     response from the server before timing out.The default value for socket.timeout.ms is 30 seconds.
+                     if timeout happens kafka will retry to send the msg in this case you might get 2 messages so keep timeout.ms is little high
 
 */
 
