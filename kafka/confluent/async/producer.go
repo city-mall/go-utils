@@ -197,6 +197,7 @@ func CloseProducer(name string) {
 		}
 		FlushProducerChannel(name)
 		zerolog.Info().Msgf("Closing %v", name)
+		producer.initialized = false
 		producer.asyncProducer.Close()
 	} else {
 		zerolog.Error().Msgf("Producer %v not found", name)
