@@ -74,11 +74,12 @@ func KafkaProducer(config ProducerConfig) error {
 	}
 	appEnv := config.AppEnv
 	if appEnv != "development" {
+		//TODO: doing a dirty change as kafka ds is down
 		kafkaConfig.SetKey("sasl.mechanisms", config.SASLMechanism)
-		kafkaConfig.SetKey("security.protocol", "SASL_SSL")
+		kafkaConfig.SetKey("security.protocol", "SASL_PLAINTEXT")
 		kafkaConfig.SetKey("sasl.username", config.SASLUser)
 		kafkaConfig.SetKey("sasl.password", config.SASLPassword)
-		kafkaConfig.SetKey("enable.ssl.certificate.verification", config.EnableSslCertificationVerification)
+		// kafkaConfig.SetKey("enable.ssl.certificate.verification", config.EnableSslCertificationVerification)
 	}
 	producers[config.Name] = &producer{
 		asyncProducer: nil,
