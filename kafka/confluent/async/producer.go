@@ -2,7 +2,6 @@ package async
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -45,6 +44,7 @@ type ProducerConfig struct {
 	BatchNumMessages                   int
 	BatchSize                          int
 	LingerMs                           int
+	SecurityProtocol                   string
 }
 
 type producer struct {
@@ -75,7 +75,11 @@ func KafkaProducer(config ProducerConfig) error {
 	appEnv := config.AppEnv
 	if appEnv != "development" {
 		kafkaConfig.SetKey("sasl.mechanisms", config.SASLMechanism)
-		kafkaConfig.SetKey("security.protocol", "SASL_SSL")
+		if config.SecurityProtocol != "" {
+			kafkaConfig.SetKey("security.protocol", config.SecurityProtocol)
+		} else {
+			kafkaConfig.SetKey("security.protocol", "SASL_SSL")
+		}
 		kafkaConfig.SetKey("sasl.username", config.SASLUser)
 		kafkaConfig.SetKey("sasl.password", config.SASLPassword)
 		kafkaConfig.SetKey("enable.ssl.certificate.verification", config.EnableSslCertificationVerification)
@@ -207,7 +211,7 @@ func CloseProducer(name string) {
 func FlushProducerChannel(name string) error {
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
-			err := errors.New(fmt.Sprintf("Kafka %v not initialized", name))
+			err := fmt.Errorf("kafka %v not initialized", name)
 			zerolog.Error().Msgf(err.Error())
 			return err
 		}
@@ -215,7 +219,7 @@ func FlushProducerChannel(name string) error {
 		zerolog.Info().Msgf("Unflushed Messages %v", count)
 		return nil
 	} else {
-		err := errors.New(fmt.Sprintf("Producer %v not found", name))
+		err := fmt.Errorf("producer %v not found", name)
 		zerolog.Error().Msgf(err.Error())
 		return err
 	}

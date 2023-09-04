@@ -15,13 +15,14 @@ var (
 )
 
 type ProducerConfig struct {
-	AppEnv          string
-	ProducerTimeout time.Duration
-	ClientID        string
-	SASLMechanism   string
-	SASLUser        string
-	SASLPassword    string
-	Brokers         string
+	AppEnv           string
+	ProducerTimeout  time.Duration
+	ClientID         string
+	SASLMechanism    string
+	SASLUser         string
+	SASLPassword     string
+	Brokers          string
+	SecurityProtocol string
 }
 
 func KafkaProducer(config ProducerConfig) {
@@ -33,7 +34,11 @@ func KafkaProducer(config ProducerConfig) {
 	appEnv := config.AppEnv
 	if appEnv != "development" {
 		kafkaConfig.SetKey("sasl.mechanisms", config.SASLMechanism)
-		kafkaConfig.SetKey("security.protocol", "sasl_ssl")
+		if config.SecurityProtocol != "" {
+			kafkaConfig.SetKey("security.protocol", config.SecurityProtocol)
+		} else {
+			kafkaConfig.SetKey("security.protocol", "sasl_ssl")
+		}
 		kafkaConfig.SetKey("sasl.username", config.SASLUser)
 		kafkaConfig.SetKey("sasl.password", config.SASLPassword)
 

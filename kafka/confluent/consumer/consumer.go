@@ -15,15 +15,16 @@ var (
 )
 
 type ConsumerConfig struct {
-	AppEnv        string
-	ClientID      string
-	SASLEnable    bool
-	SASLMechanism string
-	SASLUser      string
-	SASLPassword  string
-	Brokers       string
-	ConsumerGroup string
-	Topic         []string
+	AppEnv           string
+	ClientID         string
+	SASLEnable       bool
+	SASLMechanism    string
+	SASLUser         string
+	SASLPassword     string
+	Brokers          string
+	ConsumerGroup    string
+	Topic            []string
+	SecurityProtocol string
 }
 
 func KafkaConsumer(config ConsumerConfig) {
@@ -39,7 +40,11 @@ func KafkaConsumer(config ConsumerConfig) {
 		kafkaConfig.SetKey("sasl.mechanisms", config.SASLMechanism)
 		kafkaConfig.SetKey("sasl.username", config.SASLUser)
 		kafkaConfig.SetKey("sasl.password", config.SASLPassword)
-		kafkaConfig.SetKey("security.protocol", "sasl_ssl")
+		if config.SecurityProtocol != "" {
+			kafkaConfig.SetKey("security.protocol", config.SecurityProtocol)
+		} else {
+			kafkaConfig.SetKey("security.protocol", "sasl_ssl")
+		}
 	}
 
 	consumer, err = kafka.NewConsumer(kafkaConfig)
