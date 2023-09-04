@@ -39,7 +39,7 @@ func KafkaConsumer(config ConsumerConfig) {
 		kafkaConfig.SetKey("sasl.mechanisms", config.SASLMechanism)
 		kafkaConfig.SetKey("sasl.username", config.SASLUser)
 		kafkaConfig.SetKey("sasl.password", config.SASLPassword)
-		kafkaConfig.SetKey("security.protocol", "SASL_PLAINTEXT")
+		kafkaConfig.SetKey("security.protocol", "sasl_ssl")
 	}
 
 	consumer, err = kafka.NewConsumer(kafkaConfig)
