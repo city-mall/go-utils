@@ -234,7 +234,7 @@ func deliveryTestHandler(deliveryChan chan kafka.Event) {
 		if m.TopicPartition.Error != nil {
 			zerolog.Debug().Msgf("Message delivery tp %v error: %v value %v", m.TopicPartition, m.TopicPartition.Error, m.Value)
 		} else {
-			zerolog.Debug().Msgf("Message sent success %v", m.Value)
+			zerolog.Debug().Msgf("go-utils: Message sent success")
 		}
 	}
 }
