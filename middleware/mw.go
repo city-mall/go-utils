@@ -44,7 +44,6 @@ func Logger() gin.HandlerFunc {
 			"status":     c.Writer.Status(),
 			"referrer":   c.Request.Referer(),
 			"request_id": c.Writer.Header().Get("Request-Id"),
-			"body":       data,
 		})
 
 		if c.Writer.Status() >= 500 {
