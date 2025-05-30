@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	zerolog "github.com/rs/zerolog/log"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	zerolog "github.com/rs/zerolog/log"
 )
 
 /*
@@ -58,7 +58,7 @@ var producers = make(map[string]*producer)
 
 func KafkaProducer(config ProducerConfig) error {
 	logger := zerolog.With().Str("component", "kafka_producer").Str("name", config.Name).Logger()
-	
+
 	if config.SocketTimeOut < 10 {
 		config.SocketTimeOut = 300000
 		logger.Info().Int64("socket_timeout", int64(config.SocketTimeOut)).Msg("Using default socket timeout")
@@ -76,7 +76,7 @@ func KafkaProducer(config ProducerConfig) error {
 		"batch.size":         config.BatchSize,
 		"linger.ms":          config.LingerMs,
 	}
-	
+
 	appEnv := config.AppEnv
 	if appEnv != "development" {
 		kafkaConfig.SetKey("sasl.mechanisms", config.SASLMechanism)
@@ -94,14 +94,14 @@ func KafkaProducer(config ProducerConfig) error {
 			Bool("ssl_verification", config.EnableSslCertificationVerification).
 			Msg("Configured secure connection")
 	}
-	
+
 	producers[config.Name] = &producer{
 		asyncProducer: nil,
 		initialized:   false,
 		err:           nil,
 		config:        config,
 	}
-	
+
 	var err error
 	producers[config.Name].asyncProducer, err = kafka.NewProducer(kafkaConfig)
 	if err != nil {
@@ -109,14 +109,14 @@ func KafkaProducer(config ProducerConfig) error {
 		producers[config.Name].err = err
 		return err
 	}
-	
+
 	producers[config.Name].initialized = true
 	producers[config.Name].err = nil
 	logger.Info().Msg("Kafka producer connected successfully")
-	
+
 	// Start the event handler goroutine to process delivery reports and other events
 	go deliveryTestHandler(producers[config.Name].asyncProducer.Events())
-	
+
 	return nil
 }
 
@@ -138,19 +138,17 @@ func CreateTopic(topics []string, env string, name string) error {
 			return err
 		}
 		NumPartitions := 10
-		ReplicationFactor := 1
 		if env != "production" {
 			NumPartitions = 1
-			ReplicationFactor = 1
 		}
 
 		var topicSpecs []kafka.TopicSpecification
 
 		for _, topic := range topics {
 			topicSpecs = append(topicSpecs, kafka.TopicSpecification{
-				Topic:             topic,
-				NumPartitions:     NumPartitions,
-				ReplicationFactor: ReplicationFactor})
+				Topic:         topic,
+				NumPartitions: NumPartitions,
+			})
 		}
 
 		results, err := a.CreateTopics(
@@ -188,7 +186,7 @@ func PushJSONMessage(m []byte, topic string, name string) {
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          m,
 		}
-		
+
 		// Use Produce() instead of ProduceChannel() as recommended in v2
 		err := producer.asyncProducer.Produce(msg, nil)
 		if err != nil {
@@ -210,7 +208,7 @@ func PushStringMessage(m string, topic string, name string) {
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          []byte(m),
 		}
-		
+
 		// Use Produce() instead of ProduceChannel() as recommended in v2
 		err := producer.asyncProducer.Produce(msg, nil)
 		if err != nil {
@@ -223,13 +221,13 @@ func PushStringMessage(m string, topic string, name string) {
 
 func CloseProducer(name string) {
 	logger := zerolog.With().Str("component", "kafka_producer").Str("name", name).Logger()
-	
+
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
 			logger.Error().Msg("Kafka producer not initialized")
 			return
 		}
-		
+
 		logger.Info().Msg("Closing Kafka producer")
 		producer.initialized = false
 		producer.asyncProducer.Close()
@@ -241,14 +239,14 @@ func CloseProducer(name string) {
 
 func FlushProducerChannel(name string) error {
 	logger := zerolog.With().Str("component", "kafka_producer").Str("name", name).Logger()
-	
+
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
 			err := fmt.Errorf("kafka producer %s not initialized", name)
 			logger.Error().Err(err).Msg("Cannot flush")
 			return err
 		}
-		
+
 		// Flush is still available in v2 and works with both Produce() and ProduceChannel()
 		// The parameter is a timeout in milliseconds
 		count := producer.asyncProducer.Flush(3000)
@@ -267,7 +265,7 @@ func FlushProducerChannel(name string) error {
 
 func deliveryTestHandler(deliveryChan chan kafka.Event) {
 	logger := zerolog.With().Str("component", "kafka_delivery_handler").Logger()
-	
+
 	for ev := range deliveryChan {
 		switch e := ev.(type) {
 		case *kafka.Message:
@@ -276,14 +274,14 @@ func deliveryTestHandler(deliveryChan chan kafka.Event) {
 			if e.TopicPartition.Topic != nil {
 				topic = *e.TopicPartition.Topic
 			}
-			
+
 			// Build logger with context
 			msgLogger := logger.With().
 				Str("topic", topic).
 				Int32("partition", e.TopicPartition.Partition).
 				Int64("offset", int64(e.TopicPartition.Offset)).
 				Logger()
-			
+
 			if e.TopicPartition.Error != nil {
 				// Log error with context
 				msgLogger.Error().
@@ -293,14 +291,14 @@ func deliveryTestHandler(deliveryChan chan kafka.Event) {
 				// Log success with context
 				msgLogger.Debug().Msg("Message delivered successfully")
 			}
-			
+
 		case kafka.Error:
 			// Handle Kafka errors
 			logger.Error().
 				Int("error_code", int(e.Code())).
 				Str("error", e.Error()).
 				Msg("Kafka error occurred")
-			
+
 		default:
 			// Log unexpected event types
 			logger.Debug().
@@ -308,6 +306,6 @@ func deliveryTestHandler(deliveryChan chan kafka.Event) {
 				Msg("Received unknown event type")
 		}
 	}
-	
+
 	logger.Warn().Msg("Delivery handler exiting - event channel closed")
 }
