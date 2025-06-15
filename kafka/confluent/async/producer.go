@@ -195,7 +195,38 @@ func PushJSONMessage(m []byte, topic string, name string) {
 	} else {
 		zerolog.Error().Str("producer", name).Msg("Producer not found")
 	}
+}
 
+// PushJSONMessageToPartition sends a JSON message to a specific partition in the given topic
+// Parameters:
+// - m: JSON message as byte array
+// - topic: Kafka topic name
+// - partition: Specific partition number to send the message to
+// - name: Producer name as configured in the producers map
+func PushJSONMessageToPartition(m []byte, topic string, partition int32, name string) {
+	logger := zerolog.With().Str("component", "kafka_producer").Str("topic", topic).Int32("partition", partition).Str("producer", name).Logger()
+	
+	if producer, found := producers[name]; found {
+		if !producer.initialized {
+			logger.Error().Msg("Kafka producer not initialized")
+			return
+		}
+		
+		msg := &kafka.Message{
+			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: partition},
+			Value:          m,
+		}
+
+		// Use Produce() instead of ProduceChannel() as recommended in v2
+		err := producer.asyncProducer.Produce(msg, nil)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to produce message to specific partition")
+		} else {
+			logger.Debug().Msg("Message queued for delivery to specific partition")
+		}
+	} else {
+		logger.Error().Msg("Producer not found")
+	}
 }
 
 func PushStringMessage(m string, topic string, name string) {
@@ -216,6 +247,38 @@ func PushStringMessage(m string, topic string, name string) {
 		}
 	} else {
 		zerolog.Error().Str("producer", name).Msg("Producer not found")
+	}
+}
+
+// PushStringMessageToPartition sends a string message to a specific partition in the given topic
+// Parameters:
+// - m: String message to be sent
+// - topic: Kafka topic name
+// - partition: Specific partition number to send the message to
+// - name: Producer name as configured in the producers map
+func PushStringMessageToPartition(m string, topic string, partition int32, name string) {
+	logger := zerolog.With().Str("component", "kafka_producer").Str("topic", topic).Int32("partition", partition).Str("producer", name).Logger()
+	
+	if producer, found := producers[name]; found {
+		if !producer.initialized {
+			logger.Error().Msg("Kafka producer not initialized")
+			return
+		}
+		
+		msg := &kafka.Message{
+			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: partition},
+			Value:          []byte(m),
+		}
+
+		// Use Produce() instead of ProduceChannel() as recommended in v2
+		err := producer.asyncProducer.Produce(msg, nil)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to produce string message to specific partition")
+		} else {
+			logger.Debug().Msg("String message queued for delivery to specific partition")
+		}
+	} else {
+		logger.Error().Msg("Producer not found")
 	}
 }
 
