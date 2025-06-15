@@ -203,18 +203,19 @@ func PushJSONMessage(m []byte, topic string, name string) {
 // - topic: Kafka topic name
 // - partition: Specific partition number to send the message to
 // - name: Producer name as configured in the producers map
-func PushJSONMessageToPartition(m []byte, topic string, partition int32, name string) {
-	logger := zerolog.With().Str("component", "kafka_producer").Str("topic", topic).Int32("partition", partition).Str("producer", name).Logger()
-	
+func PushJSONMessageToPartition(m []byte, topic string, key string, name string) {
+	logger := zerolog.With().Str("component", "kafka_producer").Str("topic", topic).Str("key", key).Str("producer", name).Logger()
+
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
 			logger.Error().Msg("Kafka producer not initialized")
 			return
 		}
-		
+
 		msg := &kafka.Message{
-			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: partition},
+			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          m,
+			Key:            []byte(key),
 		}
 
 		// Use Produce() instead of ProduceChannel() as recommended in v2
@@ -256,18 +257,19 @@ func PushStringMessage(m string, topic string, name string) {
 // - topic: Kafka topic name
 // - partition: Specific partition number to send the message to
 // - name: Producer name as configured in the producers map
-func PushStringMessageToPartition(m string, topic string, partition int32, name string) {
-	logger := zerolog.With().Str("component", "kafka_producer").Str("topic", topic).Int32("partition", partition).Str("producer", name).Logger()
-	
+func PushStringMessageToPartition(m string, topic string, key string, name string) {
+	logger := zerolog.With().Str("component", "kafka_producer").Str("topic", topic).Str("key", key).Str("producer", name).Logger()
+
 	if producer, found := producers[name]; found {
 		if !producer.initialized {
 			logger.Error().Msg("Kafka producer not initialized")
 			return
 		}
-		
+
 		msg := &kafka.Message{
-			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: partition},
+			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          []byte(m),
+			Key:            []byte(key),
 		}
 
 		// Use Produce() instead of ProduceChannel() as recommended in v2
