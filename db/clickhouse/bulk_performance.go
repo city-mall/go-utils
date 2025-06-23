@@ -64,6 +64,9 @@ func BulkPerformanceTest() {
 		},
 		Engine: EngineConfig{
 			Type: "ReplacingMergeTree", // Perfect for upsert scenarios
+			Parameters: map[string]string{
+				"version": "timestamp", // Use timestamp as version column for replacement logic
+			},
 		},
 		PartitionBy: "toYYYYMMDD(timestamp)",
 		OrderBy:     []string{"id"},
@@ -315,4 +318,97 @@ func BulkPerformanceTest() {
 	fmt.Printf("IST timezone support: ✓ Active\n")
 
 	fmt.Println("\n✅ Bulk performance test completed successfully!")
+}
+
+// SimpleClickHouseExample demonstrates basic ClickHouse client usage
+func SimpleClickHouseExample() {
+	fmt.Println("\n=== ClickHouse Client Example ===")
+
+	// Configuration for production
+	config := ClickHouseConfig{
+		Host:            "localhost",
+		Port:            9000,
+		Database:        "default",
+		Username:        "default",
+		Password:        "", // Use environment variables in production
+		MaxOpenConns:    20,
+		MaxIdleConns:    10,
+		ConnMaxLifetime: time.Hour,
+		BatchSize:       1000,
+		AsyncSettings:   OptimizedAsyncConfig("medium_volume"),
+	}
+
+	client, err := NewClient(config)
+	if err != nil {
+		fmt.Printf("❌ Failed to create ClickHouse client: %v\n", err)
+		fmt.Println("💡 Make sure ClickHouse is running on localhost:9000")
+		return
+	}
+	defer client.Close()
+
+	ctx := context.Background()
+
+	// Health check
+	if err := client.HealthCheck(ctx); err != nil {
+		fmt.Printf("❌ ClickHouse health check failed: %v\n", err)
+		fmt.Println("💡 Make sure ClickHouse is running and accessible")
+		return
+	}
+	fmt.Println("✅ ClickHouse connection healthy")
+
+	// Example schema
+	schema := &TableSchema{
+		TableName:  "example_events",
+		StructName: "ExampleEvent",
+		PrimaryKey: []string{"id"},
+		Fields: []FieldSchema{
+			{Name: "Id", ColumnName: "id", GoType: "uint64", ClickHouseType: "UInt64"},
+			{Name: "UserId", ColumnName: "user_id", GoType: "uint64", ClickHouseType: "UInt64"},
+			{Name: "EventType", ColumnName: "event_type", GoType: "string", ClickHouseType: "String"},
+			{Name: "Timestamp", ColumnName: "timestamp", GoType: "time.Time", ClickHouseType: "DateTime"},
+			{Name: "Properties", ColumnName: "properties", GoType: "map[string]string", ClickHouseType: "Map(String, String)"},
+		},
+		Engine: EngineConfig{
+			Type: "MergeTree",
+		},
+		PartitionBy: "toYYYYMM(timestamp)",
+		Settings:    DefaultSettings(),
+	}
+
+	// Create table
+	if err := client.CreateTableFromSchema(ctx, schema); err != nil {
+		fmt.Printf("❌ Failed to create table: %v\n", err)
+		return
+	}
+	fmt.Println("✅ Table created successfully")
+
+	// Insert sample data
+	data := []map[string]any{
+		{
+			"id":         uint64(1),
+			"user_id":    uint64(100),
+			"event_type": "page_view",
+			"timestamp":  time.Now(),
+			"properties": map[string]string{"page": "home", "source": "direct"},
+		},
+		{
+			"id":         uint64(2),
+			"user_id":    uint64(101),
+			"event_type": "click",
+			"timestamp":  time.Now(),
+			"properties": map[string]string{"button": "signup", "page": "landing"},
+		},
+	}
+
+	if err := client.SchemaBasedInsert(ctx, "example_events", data); err != nil {
+		fmt.Printf("❌ Failed to insert data: %v\n", err)
+		return
+	}
+	fmt.Println("✅ Sample data inserted successfully")
+
+	// Get stats
+	stats := client.GetConnectionStats()
+	fmt.Printf("✅ Connection stats: %+v\n", stats)
+
+	fmt.Println("\n🎉 ClickHouse client example completed successfully!")
 }
