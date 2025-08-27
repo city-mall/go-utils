@@ -1,8 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"os"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
 
 func main() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	fmt.Println("City Mall Go Utils - Production Ready!")
 	fmt.Println("Available utilities:")
 	fmt.Println("- ClickHouse Client (db/clickhouse)")

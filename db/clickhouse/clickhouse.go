@@ -9,6 +9,7 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/rs/zerolog/log"
 )
 
 // TableSchema represents a ClickHouse table schema
@@ -147,8 +148,12 @@ func buildAsyncSettings(config AsyncConfig) clickhouse.Settings {
 			settings["async_insert_deduplicate"] = 1
 		}
 
-		// Note: async_insert_use_adaptive_timeout may not be available in all ClickHouse versions
-		// Skipping for compatibility
+		// CRITICAL: Control adaptive timeout behavior
+		if config.AsyncInsertUseAdaptive {
+			settings["async_insert_use_adaptive_busy_timeout"] = 1
+		} else {
+			settings["async_insert_use_adaptive_busy_timeout"] = 0
+		}
 	} else {
 		// Disable async inserts
 		settings["async_insert"] = 0
@@ -176,7 +181,7 @@ type AsyncConfig struct {
 	Enabled                   bool          // Enable/disable async inserts
 	Wait                      bool          // Wait for async insert completion
 	WaitTimeout               time.Duration // Timeout for waiting
-	AsyncInsertMaxSize        int           // Max size before flush (rows or bytes)
+	AsyncInsertMaxSize        int           // Max size before flush (bytes)
 	AsyncInsertWait           time.Duration // Max wait time before flush
 	AsyncInsertThreads        int           // Number of async insert threads
 	AsyncInsertMaxQueryNumber int           // Max concurrent async queries
@@ -283,6 +288,8 @@ func NewClient(config ClickHouseConfig) (*ClickHouseClient, error) {
 		conn:   conn,
 		config: config,
 	}
+
+	verifyAsyncSettings(ctx, client)
 
 	return client, nil
 }
@@ -568,4 +575,100 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func verifyAsyncSettings(ctx context.Context, client *ClickHouseClient) {
+	log.Info().Msg("🔍 Checking actual async insert settings in ClickHouse...")
+
+	// Query the actual settings being used
+	rows, err := client.Query(ctx, `
+		SELECT
+			name,
+			value
+		FROM system.settings
+		WHERE name LIKE '%async_insert%'
+		ORDER BY name
+	`)
+
+	if err != nil {
+		log.Error().Err(err).Msg("❌ Failed to query async settings")
+		return
+	}
+	defer rows.Close()
+
+	log.Info().Msg("📋 Current async insert settings:")
+	log.Info().Msg("┌─────────────────────────────────────────────────────────────┐")
+	log.Info().Msg("│ Setting                                    │ Value        │")
+	log.Info().Msg("├─────────────────────────────────────────────┼──────────────┤")
+
+	for rows.Next() {
+		var name, value string
+		if err := rows.Scan(&name, &value); err != nil {
+			log.Error().Err(err).Msg("❌ Failed to scan setting")
+			continue
+		}
+
+		// Truncate long values for better formatting
+		if len(name) > 35 {
+			name = name[:32] + "..."
+		}
+		if len(value) > 12 {
+			value = value[:9] + "..."
+		}
+
+		log.Info().Msgf("│ %-35s │ %-12s │", name, value)
+	}
+	log.Info().Msg("└─────────────────────────────────────────────┴──────────────┘")
+	log.Info().Msg("📖 For detailed descriptions, see: https://clickhouse.com/docs/en/operations/settings/settings#async-insert")
+
+	// Also check if async inserts are actually enabled
+	log.Info().Msg("🔍 Checking if async inserts are working...")
+
+	// Check if there are any async insert threads running
+	threadRows, err := client.Query(ctx, `
+		SELECT
+			name,
+			value
+		FROM system.settings
+		WHERE name = 'async_insert_threads'
+	`)
+
+	if err != nil {
+		log.Error().Err(err).Msg("❌ Failed to check async threads")
+		return
+	}
+	defer threadRows.Close()
+
+	if threadRows.Next() {
+		var name, value string
+		if err := threadRows.Scan(&name, &value); err != nil {
+			log.Error().Err(err).Msg("❌ Failed to scan thread setting")
+		} else {
+			log.Info().Msgf("✅ Async insert threads: %s", value)
+		}
+	}
+
+	// Check the async_insert setting itself
+	asyncRows, err := client.Query(ctx, `
+		SELECT
+			name,
+			value
+		FROM system.settings
+		WHERE name = 'async_insert'
+	`)
+
+	if err != nil {
+		log.Error().Err(err).Msg("❌ Failed to check async_insert setting")
+		return
+	}
+	defer asyncRows.Close()
+
+	if asyncRows.Next() {
+		var name, value string
+		if err := asyncRows.Scan(&name, &value); err != nil {
+			log.Error().Err(err).Msg("❌ Failed to scan async_insert setting")
+		} else {
+			log.Info().Msgf("✅ Async insert enabled: %s", value)
+		}
+	}
 }
