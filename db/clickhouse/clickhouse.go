@@ -172,6 +172,7 @@ type ClickHouseConfig struct {
 	MaxOpenConns    int           // Connection pool size
 	MaxIdleConns    int           // Idle connections
 	ConnMaxLifetime time.Duration // Connection lifetime
+	DialTimeout     time.Duration // Timeout for initial connection dial and ping
 	BatchSize       int           // Optimal batch size
 	AsyncSettings   AsyncConfig   // Async insert settings
 }
@@ -229,6 +230,9 @@ func NewClient(config ClickHouseConfig) (*ClickHouseClient, error) {
 	if config.BatchSize == 0 {
 		config.BatchSize = 1000
 	}
+	if config.DialTimeout == 0 {
+		config.DialTimeout = 30 * time.Second
+	}
 
 	// Apply default async configuration if not provided
 	if config.AsyncSettings == (AsyncConfig{}) {
@@ -259,7 +263,7 @@ func NewClient(config ClickHouseConfig) (*ClickHouseClient, error) {
 			Username: config.Username,
 			Password: config.Password,
 		},
-		DialTimeout:          30 * time.Second,
+		DialTimeout:          config.DialTimeout,
 		MaxOpenConns:         config.MaxOpenConns,
 		MaxIdleConns:         config.MaxIdleConns,
 		ConnMaxLifetime:      config.ConnMaxLifetime,
@@ -275,8 +279,8 @@ func NewClient(config ClickHouseConfig) (*ClickHouseClient, error) {
 		return nil, fmt.Errorf("failed to connect to ClickHouse at %s:%d: %w", config.Host, config.Port, err)
 	}
 
-	// Test connection with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Test connection with timeout matching dial timeout
+	ctx, cancel := context.WithTimeout(context.Background(), config.DialTimeout)
 	defer cancel()
 
 	if err := conn.Ping(ctx); err != nil {
